@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#164e63">
+  <meta name="description" content="Diário pessoal e privado para acompanhar percepções durante o tratamento com atomoxetina.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Acompanhamento">
+  <title>Meu Acompanhamento — Atomoxetina</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
+  <header class="app-header">
+    <button id="brand-home" class="brand" type="button" aria-label="Ir para a tela inicial">
+      <span class="brand-mark" aria-hidden="true">✓</span>
+      <span><strong>Meu Acompanhamento</strong><small>Atomoxetina</small></span>
+    </button>
+    <button id="install-btn" class="button button-ghost compact hidden" type="button">Instalar app</button>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <section id="setup-view" class="view setup-shell hidden" aria-labelledby="setup-title">
+      <div class="setup-intro">
+        <div class="eyebrow">Primeiro acesso</div>
+        <h1 id="setup-title">Vamos preparar seu acompanhamento</h1>
+        <p>Você pode usar apenas o primeiro nome. Seus dados ficam neste dispositivo.</p>
+      </div>
+      <form id="setup-form" class="card form-card">
+        <div class="form-grid two">
+          <label>Nome <input id="setup-name" name="name" autocomplete="given-name" maxlength="80" placeholder="Como prefere ser chamado"></label>
+          <label>Data de início do acompanhamento <input id="setup-start-date" name="startDate" type="date" required></label>
+          <label>Medicamento <input id="setup-medication" name="medication" value="Atentah" required maxlength="80"></label>
+          <label>Princípio ativo <input id="setup-active" name="activeIngredient" value="Atomoxetina" maxlength="80"></label>
+          <label>Dose <span class="input-with-unit"><input id="setup-dose" name="dose" type="number" min="0" max="1000" step="0.5" inputmode="decimal" required><span>mg</span></span></label>
+          <label>Outros medicamentos <input id="setup-other-meds" name="otherMedications" maxlength="300" placeholder="Opcional"></label>
+        </div>
+        <label>Observações <textarea id="setup-notes" name="notes" rows="3" maxlength="1000" placeholder="Opcional"></textarea></label>
+        <div class="privacy-note"><span aria-hidden="true">⌂</span><span><strong>Privado por padrão.</strong> Nenhuma informação é enviada para servidores externos.</span></div>
+        <button class="button button-primary button-large" type="submit">Começar acompanhamento</button>
+      </form>
+    </section>
+
+    <section id="dashboard-view" class="view hidden" aria-labelledby="dashboard-title">
+      <div class="dashboard-hero">
+        <div>
+          <div class="eyebrow">Meu acompanhamento</div>
+          <h1 id="dashboard-title">Olá, <span id="dashboard-name"></span></h1>
+          <p class="hero-subtitle">Um retrato objetivo do seu dia a dia, registro após registro.</p>
+        </div>
+        <div class="day-orbit"><strong id="dashboard-day">Dia 1</strong><span>do acompanhamento</span></div>
+      </div>
+      <div class="treatment-strip">
+        <div><span>Tratamento atual</span><strong id="dashboard-treatment">—</strong></div>
+        <div><span>Início</span><strong id="dashboard-start">—</strong></div>
+        <div><span>Última avaliação</span><strong id="dashboard-last">Ainda não realizada</strong></div>
+      </div>
+      <div class="action-grid">
+        <button class="action-card primary-action" data-go="evaluation" type="button"><span class="action-icon">＋</span><span><strong>Fazer avaliação</strong><small>Registre como você esteve desde a última vez</small></span></button>
+        <button class="action-card" data-go="history" type="button"><span class="action-icon">▤</span><span><strong>Histórico</strong><small>Consulte, edite ou exclua registros</small></span></button>
+        <button class="action-card" data-go="evolution" type="button"><span class="action-icon">⌁</span><span><strong>Evolução</strong><small>Observe mudanças ao longo do tempo</small></span></button>
+        <button class="action-card" data-go="comparison" type="button"><span class="action-icon">⇄</span><span><strong>Comparação</strong><small>Compare o atual com o marco inicial</small></span></button>
+        <button class="action-card" data-go="backup" type="button"><span class="action-icon">⇩</span><span><strong>Backup e exportação</strong><small>Proteja e compartilhe seus dados</small></span></button>
+        <button class="action-card" data-go="settings" type="button"><span class="action-icon">⚙</span><span><strong>Configurações</strong><small>Atualize perfil e preferências</small></span></button>
+      </div>
+      <div id="dashboard-summary" class="card insight-card"></div>
+    </section>
+
+    <section id="evaluation-view" class="view hidden" aria-labelledby="evaluation-title">
+      <div class="page-heading">
+        <button class="back-button" data-go="dashboard" type="button">← Voltar</button>
+        <div><div class="eyebrow" id="evaluation-kicker">Nova avaliação</div><h1 id="evaluation-title">Como você esteve?</h1><p>Responda pensando em como você esteve desde a última avaliação.</p></div>
+      </div>
+      <form id="evaluation-form">
+        <input id="record-id" type="hidden">
+        <div class="scale-legend"><span><strong>0</strong> muita dificuldade</span><span><strong>10</strong> muito bem</span></div>
+        <div id="indicator-list" class="question-list"></div>
+        <section class="card section-card">
+          <h2>Exemplo concreto</h2>
+          <label>Exemplo ou situação que você percebeu hoje
+            <textarea id="concrete-example" rows="4" maxlength="1500" placeholder="Ex.: Consegui terminar um relatório sem levantar várias vezes."></textarea>
+          </label>
+          <p class="field-hint">Também pode registrar algo difícil, como: “Precisei reler o mesmo e-mail três vezes para entender.”</p>
+        </section>
+        <section class="card section-card">
+          <div class="section-heading"><div><h2>Como você se sentiu?</h2><p>Registre sensações percebidas. Elas não são necessariamente causadas pelo medicamento.</p></div></div>
+          <div id="effects-list" class="effects-grid"></div>
+          <label>Outro sintoma ou sensação <input id="other-effect" maxlength="250" placeholder="Opcional"></label>
+          <label>Observações <textarea id="effects-notes" rows="3" maxlength="1500" placeholder="Contexto, duração ou qualquer detalhe que queira lembrar"></textarea></label>
+        </section>
+        <section class="card section-card optional-section">
+          <div class="section-heading"><div><h2>Sono</h2><p>Se desejar, registre como foi sua noite.</p></div><span class="optional-badge">Opcional</span></div>
+          <div class="form-grid two">
+            <label>Horário aproximado em que dormiu <input id="sleep-start" type="time"></label>
+            <label>Horário em que acordou <input id="sleep-end" type="time"></label>
+            <label>Número de despertares <input id="awakenings" type="number" min="0" max="99" inputmode="numeric"></label>
+            <label>Qualidade do sono: <strong id="sleep-quality-value">5</strong>/10 <input id="sleep-quality" type="range" min="0" max="10" value="5"></label>
+          </div>
+          <label>Observações sobre o sono <textarea id="sleep-notes" rows="3" maxlength="1000"></textarea></label>
+        </section>
+        <section class="card section-card">
+          <h2>Medicação neste registro</h2>
+          <div class="form-grid two">
+            <label>Medicamento <input id="record-medication" required maxlength="80"></label>
+            <label>Dose <span class="input-with-unit"><input id="record-dose" type="number" min="0" max="1000" step="0.5" required><span>mg</span></span></label>
+            <label>Horário aproximado em que tomou <input id="medication-time" type="time"></label>
+            <fieldset><legend>Tomou a dose hoje?</legend><div class="segmented"><label><input type="radio" name="tookDose" value="sim"><span>Sim</span></label><label><input type="radio" name="tookDose" value="nao"><span>Não</span></label><label><input type="radio" name="tookDose" value="nao_informado" checked><span>Não informar</span></label></div></fieldset>
+          </div>
+          <div class="baseline-row"><label class="check-card"><input id="is-baseline" type="checkbox"><span><strong>Definir como marco inicial</strong><small>Serve como referência para comparar sua evolução.</small></span></label></div>
+        </section>
+        <div class="form-actions sticky-actions"><button class="button button-secondary" data-go="dashboard" type="button">Cancelar</button><button class="button button-primary button-large" type="submit">Salvar avaliação</button></div>
+      </form>
+    </section>
+
+    <section id="history-view" class="view hidden" aria-labelledby="history-title">
+      <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Registros</div><h1 id="history-title">Histórico</h1><p>Do mais recente para o mais antigo.</p></div></div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <section id="evolution-view" class="view hidden" aria-labelledby="evolution-title">
+      <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Ao longo do tempo</div><h1 id="evolution-title">Evolução</h1><p>Veja seus próprios registros sem interpretação clínica automática.</p></div></div>
+      <div id="evolution-stats" class="stats-grid"></div>
+      <section class="card chart-card">
+        <div class="section-heading"><div><h2>Indicadores</h2><p>Eixo vertical de 0 a 10. O ponto contornado indica o marco inicial.</p></div></div>
+        <div id="metric-toggles" class="chip-list"></div>
+        <div class="chart-wrap"><canvas id="evolution-chart" role="img" aria-label="Gráfico de evolução dos indicadores"></canvas><div id="evolution-empty" class="empty-state hidden"></div></div>
+        <div id="chart-legend" class="chart-legend"></div>
+      </section>
+      <section class="card chart-card">
+        <div class="section-heading"><div><h2>Efeitos e sensações</h2><p>Selecione uma sensação para observar a intensidade registrada (0–5).</p></div><label class="select-label">Sensação<select id="effect-select"></select></label></div>
+        <div class="chart-wrap"><canvas id="effects-chart" role="img" aria-label="Gráfico de efeitos e sensações"></canvas><div id="effects-empty" class="empty-state hidden"></div></div>
+        <div id="effects-timeline" class="timeline-summary"></div>
+      </section>
+    </section>
+
+    <section id="comparison-view" class="view hidden" aria-labelledby="comparison-title">
+      <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Marco inicial × atual</div><h1 id="comparison-title">Comparação</h1><p>Diferenças numéricas entre dois registros, sem conclusão médica automática.</p></div></div>
+      <div id="comparison-content"></div>
+    </section>
+
+    <section id="backup-view" class="view hidden" aria-labelledby="backup-title">
+      <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Seus dados</div><h1 id="backup-title">Backup e exportação</h1><p>Faça backups periódicos para evitar perda de dados.</p></div></div>
+      <div class="card-grid">
+        <article class="card task-card"><div class="task-icon">CSV</div><div><h2>Exportar CSV</h2><p>Cria uma planilha UTF-8 com todas as avaliações, pronta para abrir no Excel.</p></div><button id="export-csv" class="button button-primary" type="button">Exportar CSV</button></article>
+        <article class="card task-card"><div class="task-icon">{ }</div><div><h2>Fazer backup</h2><p>Salva perfil, configurações, registros e marco inicial em um arquivo JSON.</p></div><button id="export-json" class="button button-primary" type="button">Fazer backup</button></article>
+        <article class="card task-card"><div class="task-icon">↥</div><div><h2>Restaurar backup</h2><p>Valida um arquivo JSON antes de mesclar ou substituir os dados atuais.</p></div><label class="button button-secondary file-button">Selecionar arquivo<input id="import-json" type="file" accept="application/json,.json"></label></article>
+        <article class="card task-card"><div class="task-icon">⇩</div><div><h2>Exportar todos os meus dados</h2><p>Gera o mesmo backup completo em formato JSON.</p></div><button id="export-all" class="button button-secondary" type="button">Exportar todos os dados</button></article>
+      </div>
+      <div class="privacy-note prominent"><span aria-hidden="true">⌂</span><span>Seus registros são armazenados localmente neste dispositivo. Faça backups periódicos para evitar perda de dados.</span></div>
+    </section>
+
+    <section id="settings-view" class="view hidden" aria-labelledby="settings-title">
+      <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Preferências</div><h1 id="settings-title">Configurações</h1></div></div>
+      <form id="settings-form" class="card section-card">
+        <h2>Perfil e tratamento atual</h2>
+        <div class="form-grid two">
+          <label>Nome <input id="settings-name" maxlength="80"></label>
+          <label>Data de início <input id="settings-start-date" type="date" required></label>
+          <label>Medicamento <input id="settings-medication" required maxlength="80"></label>
+          <label>Princípio ativo <input id="settings-active" maxlength="80"></label>
+          <label>Dose <span class="input-with-unit"><input id="settings-dose" type="number" min="0" max="1000" step="0.5" required><span>mg</span></span></label>
+          <label>Outros medicamentos <input id="settings-other-meds" maxlength="300"></label>
+        </div>
+        <label>Observações <textarea id="settings-notes" rows="3" maxlength="1000"></textarea></label>
+        <button class="button button-primary" type="submit">Salvar alterações</button>
+      </form>
+      <section class="card danger-zone"><h2>Apagar dados</h2><p>Remove perfil, configurações e todos os registros deste dispositivo.</p><button id="delete-all" class="button button-danger" type="button">Apagar todos os dados deste dispositivo</button></section>
+      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.0.0</span></p></section>
+    </section>
+  </main>
+
+  <nav id="bottom-nav" class="bottom-nav hidden" aria-label="Navegação principal">
+    <button data-go="dashboard" type="button"><span>⌂</span>Início</button>
+    <button data-go="history" type="button"><span>▤</span>Histórico</button>
+    <button data-go="evaluation" class="nav-add" type="button"><span>＋</span><em>Avaliar</em></button>
+    <button data-go="evolution" type="button"><span>⌁</span>Evolução</button>
+    <button data-go="settings" type="button"><span>⚙</span>Ajustes</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions" class="modal-actions"></div>
+    </section>
+  </div>
+  <div id="update-banner" class="update-banner hidden"><span>Uma nova versão do aplicativo está disponível.</span><button id="update-app" class="button button-primary compact" type="button">Atualizar</button></div>
+  <script src="app.js" defer></script>
+</body>
+</html>

@@ -1,1 +1,90 @@
-# medicamento
+# Meu Acompanhamento — Atomoxetina
+
+Aplicativo web instalável (PWA) para registrar percepções sobre funcionamento diário, sono, medicação e possíveis efeitos ou sensações ao longo do acompanhamento com atomoxetina.
+
+O aplicativo é um diário pessoal. Não realiza diagnóstico, não determina se um medicamento está funcionando e não recomenda iniciar, interromper ou alterar doses.
+
+## Privacidade
+
+Os dados ficam somente no navegador do dispositivo, armazenados no IndexedDB. Não há backend, conta externa, API paga, ferramenta de análise ou envio de dados a servidores. Apagar os dados do navegador, remover o site ou trocar de aparelho pode eliminar os registros; por isso, faça backups JSON periódicos.
+
+## Estrutura
+
+```text
+dist/
+  index.html
+  styles.css
+  app.js
+  manifest.json
+  service-worker.js
+  icons/
+    icon-192.png
+    icon-512.png
+    apple-touch-icon.png
+    icon-source.svg
+```
+
+Todos os arquivos da pasta `dist` devem ser publicados juntos, preservando essa estrutura.
+
+## Publicar no GitHub Pages
+
+1. Crie um repositório no GitHub.
+2. Envie **o conteúdo da pasta `dist`** para a raiz do repositório. O arquivo `index.html` deve ficar na raiz.
+3. No repositório, abra **Settings → Pages**.
+4. Em **Build and deployment**, escolha **Deploy from a branch**.
+5. Selecione a branch `main`, a pasta `/ (root)` e clique em **Save**.
+6. Aguarde a publicação e abra o endereço HTTPS informado pelo GitHub.
+
+O modo offline e a instalação PWA exigem HTTPS. O GitHub Pages já fornece HTTPS.
+
+## Instalar no iPhone/iPad
+
+1. Abra o endereço publicado no **Safari**.
+2. Toque em **Compartilhar**.
+3. Escolha **Adicionar à Tela de Início**.
+4. Confirme em **Adicionar**.
+
+Abra o aplicativo ao menos uma vez com internet para que os arquivos essenciais sejam armazenados. Depois disso, ele poderá abrir offline.
+
+## Instalar no Android
+
+1. Abra o endereço publicado no Chrome.
+2. Use o botão **Instalar app** quando aparecer ou abra o menu do navegador.
+3. Escolha **Instalar aplicativo** ou **Adicionar à tela inicial**.
+4. Confirme a instalação.
+
+## Fazer backup
+
+Abra **Backup e exportação** e toque em **Fazer backup**. Será baixado um arquivo com nome semelhante a:
+
+`acompanhamento_backup_2026-09-22.json`
+
+Guarde esse arquivo em local seguro. Ele contém perfil, configurações, avaliações e a identificação do marco inicial.
+
+## Restaurar backup
+
+1. Abra **Backup e exportação**.
+2. Toque em **Selecionar arquivo**.
+3. Selecione um backup JSON gerado pelo aplicativo.
+4. Após a validação, escolha:
+   - **Mesclar**: mantém os registros atuais e acrescenta os do backup, evitando duplicatas por identificador;
+   - **Substituir**: apaga os dados atuais e usa os dados do backup;
+   - **Cancelar**: não altera nada.
+
+## Exportar para Excel
+
+Use **Exportar CSV**. O arquivo é gerado em UTF-8 com BOM e separador por ponto e vírgula, configuração adequada para versões brasileiras do Excel. Cada linha corresponde a uma avaliação.
+
+## Atualizações
+
+Quando uma nova versão dos arquivos for publicada, o aplicativo informa que há atualização disponível. Atualizar o PWA troca somente os arquivos do aplicativo e não apaga o IndexedDB.
+
+## Desenvolvimento local
+
+Para testar o Service Worker, sirva a pasta `dist` em um endereço local HTTP, por exemplo:
+
+```bash
+python3 -m http.server 8080 --directory dist
+```
+
+Abra `http://localhost:8080`. Não abra apenas o arquivo `index.html` por duplo clique, porque navegadores não ativam Service Workers no protocolo `file://`.
