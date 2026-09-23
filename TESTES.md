@@ -14,6 +14,9 @@ Data: 22/09/2026
 - CSV configurado com UTF-8 BOM, separador por ponto e vírgula e uma linha por registro.
 - Backup com versão, data, perfil, configurações, registros e marco inicial.
 - Atualização do Service Worker sem operações de limpeza no IndexedDB.
+- Criação e retenção das cinco cópias internas automáticas mais recentes.
+- Indicador do último backup externo e cálculo de atraso em 7, 15 ou 30 dias.
+- Compartilhamento do arquivo JSON pelo menu nativo quando suportado, com download como alternativa.
 - Layout responsivo e Safe Area previstos no CSS.
 
 ## Roteiro funcional preparado

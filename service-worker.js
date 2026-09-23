@@ -1,8 +1,9 @@
-const CACHE_NAME = "meu-acompanhamento-v1.0.0";
+const CACHE_NAME = "meu-acompanhamento-v1.2.0";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./styles-fixes.css",
   "./app.js",
   "./manifest.json",
   "./icons/icon-192.png",

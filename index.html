@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#164e63">
-  <meta name="description" content="Diário pessoal e privado para acompanhar percepções durante o tratamento com medicamento.">
+  <meta name="description" content="Diário pessoal e privado para acompanhar percepções durante um tratamento medicamentoso.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Acompanhamento">
@@ -13,13 +13,14 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-fixes.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
   <header class="app-header">
     <button id="brand-home" class="brand" type="button" aria-label="Ir para a tela inicial">
-      <span class="brand-mark" aria-hidden="true">✓</span>
-      <span><strong>Meu Acompanhamento</strong><small>Medicação</small></span>
+      <img class="brand-mark" src="icons/icon-192.png" alt="" aria-hidden="true">
+      <span><strong>Meu Acompanhamento</strong><small>Diário de tratamento</small></span>
     </button>
     <button id="install-btn" class="button button-ghost compact hidden" type="button">Instalar app</button>
   </header>
@@ -35,8 +36,8 @@
         <div class="form-grid two">
           <label>Nome <input id="setup-name" name="name" autocomplete="given-name" maxlength="80" placeholder="Como prefere ser chamado"></label>
           <label>Data de início do acompanhamento <input id="setup-start-date" name="startDate" type="date" required></label>
-          <label>Medicamento <input id="setup-medication" name="medication" value="Atentah" required maxlength="80"></label>
-          <label>Princípio ativo <input id="setup-active" name="activeIngredient" value="Atomoxetina" maxlength="80"></label>
+          <label>Medicamento <input id="setup-medication" name="medication" required maxlength="80" placeholder="Informe o medicamento"></label>
+          <label>Princípio ativo <input id="setup-active" name="activeIngredient" maxlength="80" placeholder="Opcional"></label>
           <label>Dose <span class="input-with-unit"><input id="setup-dose" name="dose" type="number" min="0" max="1000" step="0.5" inputmode="decimal" required><span>mg</span></span></label>
           <label>Outros medicamentos <input id="setup-other-meds" name="otherMedications" maxlength="300" placeholder="Opcional"></label>
         </div>
@@ -60,6 +61,7 @@
         <div><span>Início</span><strong id="dashboard-start">—</strong></div>
         <div><span>Última avaliação</span><strong id="dashboard-last">Ainda não realizada</strong></div>
       </div>
+      <div id="dashboard-backup-alert" class="backup-alert hidden" role="status"></div>
       <div class="action-grid">
         <button class="action-card primary-action" data-go="evaluation" type="button"><span class="action-icon">＋</span><span><strong>Fazer avaliação</strong><small>Registre como você esteve desde a última vez</small></span></button>
         <button class="action-card" data-go="history" type="button"><span class="action-icon">▤</span><span><strong>Histórico</strong><small>Consulte, edite ou exclua registros</small></span></button>
@@ -145,12 +147,21 @@
 
     <section id="backup-view" class="view hidden" aria-labelledby="backup-title">
       <div class="page-heading"><button class="back-button" data-go="dashboard" type="button">← Voltar</button><div><div class="eyebrow">Seus dados</div><h1 id="backup-title">Backup e exportação</h1><p>Faça backups periódicos para evitar perda de dados.</p></div></div>
+      <section id="backup-status" class="card backup-status" aria-live="polite"></section>
       <div class="card-grid">
         <article class="card task-card"><div class="task-icon">CSV</div><div><h2>Exportar CSV</h2><p>Cria uma planilha UTF-8 com todas as avaliações, pronta para abrir no Excel.</p></div><button id="export-csv" class="button button-primary" type="button">Exportar CSV</button></article>
-        <article class="card task-card"><div class="task-icon">{ }</div><div><h2>Fazer backup</h2><p>Salva perfil, configurações, registros e marco inicial em um arquivo JSON.</p></div><button id="export-json" class="button button-primary" type="button">Fazer backup</button></article>
+        <article class="card task-card"><div class="task-icon">{ }</div><div><h2>Backup externo</h2><p>Gera o arquivo JSON e, em celulares compatíveis, abre o menu para salvar em Arquivos, iCloud Drive ou outro destino.</p></div><button id="export-json" class="button button-primary" type="button">Fazer backup agora</button><button id="share-json" class="button button-secondary" type="button">Compartilhar JSON</button></article>
         <article class="card task-card"><div class="task-icon">↥</div><div><h2>Restaurar backup</h2><p>Valida um arquivo JSON antes de mesclar ou substituir os dados atuais.</p></div><label class="button button-secondary file-button">Selecionar arquivo<input id="import-json" type="file" accept="application/json,.json"></label></article>
         <article class="card task-card"><div class="task-icon">⇩</div><div><h2>Exportar todos os meus dados</h2><p>Gera o mesmo backup completo em formato JSON.</p></div><button id="export-all" class="button button-secondary" type="button">Exportar todos os dados</button></article>
       </div>
+      <section class="card section-card backup-schedule">
+        <div class="section-heading"><div><h2>Lembrete de backup</h2><p>Escolha quando o aplicativo deve destacar que o backup externo está atrasado.</p></div></div>
+        <fieldset><legend>Periodicidade</legend><div class="segmented backup-intervals"><label><input type="radio" name="backupInterval" value="7"><span>7 dias</span></label><label><input type="radio" name="backupInterval" value="15"><span>15 dias</span></label><label><input type="radio" name="backupInterval" value="30"><span>30 dias</span></label></div></fieldset>
+      </section>
+      <section class="card section-card">
+        <div class="section-heading"><div><h2>Cópias internas automáticas</h2><p>Uma cópia é criada após cada alteração. São mantidas as cinco versões mais recentes neste dispositivo.</p></div></div>
+        <div id="internal-snapshots" class="snapshot-list"></div>
+      </section>
       <div class="privacy-note prominent"><span aria-hidden="true">⌂</span><span>Seus registros são armazenados localmente neste dispositivo. Faça backups periódicos para evitar perda de dados.</span></div>
     </section>
 
@@ -170,7 +181,7 @@
         <button class="button button-primary" type="submit">Salvar alterações</button>
       </form>
       <section class="card danger-zone"><h2>Apagar dados</h2><p>Remove perfil, configurações e todos os registros deste dispositivo.</p><button id="delete-all" class="button button-danger" type="button">Apagar todos os dados deste dispositivo</button></section>
-      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.0.0</span></p></section>
+      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.2.0</span></p></section>
     </section>
   </main>
 

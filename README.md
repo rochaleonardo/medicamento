@@ -1,6 +1,6 @@
-# Meu Acompanhamento — Atomoxetina
+# Meu Acompanhamento
 
-Aplicativo web instalável (PWA) para registrar percepções sobre funcionamento diário, sono, medicação e possíveis efeitos ou sensações ao longo do acompanhamento com atomoxetina.
+Aplicativo web instalável (PWA) para registrar percepções sobre funcionamento diário, sono, medicação e possíveis efeitos ou sensações ao longo de um tratamento medicamentoso.
 
 O aplicativo é um diário pessoal. Não realiza diagnóstico, não determina se um medicamento está funcionando e não recomenda iniciar, interromper ou alterar doses.
 
@@ -55,11 +55,21 @@ Abra o aplicativo ao menos uma vez com internet para que os arquivos essenciais 
 
 ## Fazer backup
 
-Abra **Backup e exportação** e toque em **Fazer backup**. Será baixado um arquivo com nome semelhante a:
+Abra **Backup e exportação** e toque em **Fazer backup agora**. Será baixado um arquivo com nome semelhante a:
 
 `acompanhamento_backup_2026-09-22.json`
 
 Guarde esse arquivo em local seguro. Ele contém perfil, configurações, avaliações e a identificação do marco inicial.
+
+Em aparelhos compatíveis, use **Compartilhar JSON** para abrir o menu do sistema e salvar o arquivo em Arquivos, iCloud Drive, Google Drive ou outro destino disponível.
+
+O aplicativo mostra a data do último backup externo e permite configurar lembretes a cada 7, 15 ou 30 dias. Quando o prazo é atingido, um aviso destacado aparece na tela inicial e na área de backup.
+
+## Cópias internas automáticas
+
+Após cada alteração de perfil, configuração ou avaliação, o aplicativo cria automaticamente uma cópia interna. São mantidas as cinco versões mais recentes. Essas cópias podem ser restauradas em **Backup e exportação → Cópias internas automáticas**.
+
+As cópias internas ficam no mesmo dispositivo e ajudam a desfazer alterações acidentais, mas não substituem o backup JSON externo. Se os dados do navegador forem removidos, as cópias internas também poderão ser perdidas.
 
 ## Restaurar backup
 
@@ -79,6 +89,8 @@ Use **Exportar CSV**. O arquivo é gerado em UTF-8 com BOM e separador por ponto
 
 Quando uma nova versão dos arquivos for publicada, o aplicativo informa que há atualização disponível. Atualizar o PWA troca somente os arquivos do aplicativo e não apaga o IndexedDB.
 
+Versão atual: **1.2.0**.
+
 ## Desenvolvimento local
 
 Para testar o Service Worker, sirva a pasta `dist` em um endereço local HTTP, por exemplo:
@@ -87,4 +99,6 @@ Para testar o Service Worker, sirva a pasta `dist` em um endereço local HTTP, p
 python3 -m http.server 8080 --directory dist
 ```
 
-Abra `http://localhost:8080`. Não abra apenas o arquivo `index.html` por duplo clique, porque navegadores não ativam Service Workers no protocolo `file://`.
+Abra `http://localhost:8080` para testar todos os recursos de PWA.
+
+O arquivo `index.html` também pode ser aberto por duplo clique no computador para uso local. Nesse modo, o formulário e os registros funcionam, mas a instalação como PWA, o cache offline e as atualizações automáticas exigem publicação em HTTPS ou execução em `localhost`.

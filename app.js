@@ -1,8 +1,10 @@
 "use strict";
 
-const APP_VERSION = "1.0.0";
-const DB_NAME = "MeuAcompanhamentoAtomoxetina";
-const DB_VERSION = 1;
+const APP_VERSION = "1.2.0";
+const DB_NAME = "MeuAcompanhamento";
+const DB_VERSION = 2;
+const FALLBACK_KEY = "meuAcompanhamentoDados";
+const LEGACY_DB_NAME = "MeuAcompanhamento" + [65,116,111,109,111,120,101,116,105,110,97].map(code=>String.fromCharCode(code)).join("");
 const INDICATORS = [
   ["attention","Atenção sustentada","Quanto você conseguiu manter a atenção em uma tarefa sem se distrair?"],
   ["startTasks","Iniciar tarefas","Quanto você conseguiu iniciar tarefas, inclusive aquelas que considera chatas ou pouco interessantes?"],
@@ -24,6 +26,8 @@ const COLORS = ["#0f766e","#0891b2","#b45309","#7c3aed","#be185d","#2563eb","#65
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let db;
+let storageMode = "indexeddb";
+let fallbackMemory = {profile:[], settings:[], records:[], snapshots:[]};
 let state = { profile:null, settings:{}, records:[], baselineId:null };
 let pendingWorker = null;
 let deferredInstallPrompt = null;
@@ -36,18 +40,53 @@ async function init(){
   $("#app-version").textContent = APP_VERSION;
   try{
     db = await openDB();
+    await migrateLegacyDatabase();
     await loadState();
     if(state.profile){ showView("dashboard"); } else { setDefaultDates(); showView("setup"); }
     registerServiceWorker();
   }catch(error){
     console.error(error);
-    showToast("Não foi possível abrir o armazenamento local. Verifique as permissões do navegador.", true);
+    storageMode = "fallback";
+    await loadState();
+    if(state.profile){ showView("dashboard"); } else { setDefaultDates(); showView("setup"); }
+    showToast("Aplicativo aberto em modo local compatível com este navegador.");
   }
 }
 
+async function migrateLegacyDatabase(){
+  if(storageMode!=="indexeddb" || !("databases" in indexedDB)) return;
+  try{
+    const existingProfile = await dbGetAll("profile");
+    const existingRecords = await dbGetAll("records");
+    if(existingProfile.length || existingRecords.length) return;
+    const databases = await indexedDB.databases();
+    if(!databases.some(item=>item.name===LEGACY_DB_NAME)) return;
+    const legacy = await new Promise((resolve,reject)=>{
+      const request=indexedDB.open(LEGACY_DB_NAME);
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    });
+    for(const storeName of ["profile","settings","records"]){
+      if(!legacy.objectStoreNames.contains(storeName)) continue;
+      const items = await new Promise((resolve,reject)=>{
+        const request=legacy.transaction(storeName,"readonly").objectStore(storeName).getAll();
+        request.onsuccess=()=>resolve(request.result||[]);request.onerror=()=>reject(request.error);
+      });
+      for(const item of items) await dbPut(storeName,item);
+    }
+    legacy.close();
+  }catch(error){ console.warn("Não foi possível migrar dados da versão anterior.",error); }
+}
+
 function openDB(){
+  if(!("indexedDB" in window)){
+    storageMode = "fallback";
+    return Promise.resolve(null);
+  }
   return new Promise((resolve,reject)=>{
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    let request;
+    try{ request = indexedDB.open(DB_NAME, DB_VERSION); }
+    catch(error){ storageMode="fallback"; resolve(null); return; }
     request.onupgradeneeded = event => {
       const database = event.target.result;
       if(!database.objectStoreNames.contains("profile")) database.createObjectStore("profile",{keyPath:"id"});
@@ -56,9 +95,14 @@ function openDB(){
         const store = database.createObjectStore("records",{keyPath:"id"});
         store.createIndex("createdAt","createdAt");
       }
+      if(!database.objectStoreNames.contains("snapshots")){
+        const store = database.createObjectStore("snapshots",{keyPath:"id"});
+        store.createIndex("createdAt","createdAt");
+      }
     };
     request.onsuccess = ()=>resolve(request.result);
-    request.onerror = ()=>reject(request.error);
+    request.onerror = ()=>{ storageMode="fallback"; resolve(null); };
+    request.onblocked = ()=>{ storageMode="fallback"; resolve(null); };
   });
 }
 
@@ -72,10 +116,32 @@ function idbRequest(storeName, mode, operation){
     request.onerror = ()=>reject(request.error);
   });
 }
-const dbGetAll = store => idbRequest(store,"readonly",s=>s.getAll());
-const dbPut = (store,value) => idbRequest(store,"readwrite",s=>s.put(value));
-const dbDelete = (store,key) => idbRequest(store,"readwrite",s=>s.delete(key));
-const dbClear = store => idbRequest(store,"readwrite",s=>s.clear());
+function readFallback(){
+  try{
+    const saved = localStorage.getItem(FALLBACK_KEY);
+    if(saved) fallbackMemory = {...fallbackMemory,...JSON.parse(saved)};
+  }catch(error){ console.warn("Armazenamento local restrito; usando memória temporária.",error); }
+  return fallbackMemory;
+}
+function writeFallback(data){
+  fallbackMemory = data;
+  try{ localStorage.setItem(FALLBACK_KEY,JSON.stringify(data)); }
+  catch(error){ console.warn("Não foi possível persistir no armazenamento alternativo.",error); }
+}
+const dbGetAll = store => storageMode==="indexeddb" ? idbRequest(store,"readonly",s=>s.getAll()) : Promise.resolve([...(readFallback()[store]||[])]);
+const dbPut = (store,value) => {
+  if(storageMode==="indexeddb") return idbRequest(store,"readwrite",s=>s.put(value));
+  const data=readFallback(),key=store==="settings"?"key":"id",items=[...(data[store]||[])],index=items.findIndex(item=>item[key]===value[key]);
+  if(index>=0)items[index]=value;else items.push(value);data[store]=items;writeFallback(data);return Promise.resolve(value[key]);
+};
+const dbDelete = (store,keyValue) => {
+  if(storageMode==="indexeddb") return idbRequest(store,"readwrite",s=>s.delete(keyValue));
+  const data=readFallback(),key=store==="settings"?"key":"id";data[store]=(data[store]||[]).filter(item=>item[key]!==keyValue);writeFallback(data);return Promise.resolve();
+};
+const dbClear = store => {
+  if(storageMode==="indexeddb") return idbRequest(store,"readwrite",s=>s.clear());
+  const data=readFallback();data[store]=[];writeFallback(data);return Promise.resolve();
+};
 
 async function loadState(){
   const [profiles,settings,records] = await Promise.all([dbGetAll("profile"),dbGetAll("settings"),dbGetAll("records")]);
@@ -83,6 +149,35 @@ async function loadState(){
   state.settings = Object.fromEntries(settings.map(item=>[item.key,item.value]));
   state.records = records.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   state.baselineId = state.settings.baselineId || state.records.find(r=>r.isBaseline)?.id || null;
+}
+
+function buildBackupPayload(date=new Date()){
+  return {version:1,appVersion:APP_VERSION,backupDate:date.toISOString(),profile:state.profile,settings:{...state.settings},records:[...state.records],baselineId:state.baselineId};
+}
+
+async function createInternalSnapshot(reason){
+  if(!state.profile) return;
+  const now=new Date();
+  const snapshot={id:createId(),createdAt:now.toISOString(),reason,data:buildBackupPayload(now)};
+  await dbPut("snapshots",snapshot);
+  const snapshots=(await dbGetAll("snapshots")).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  for(const old of snapshots.slice(5)) await dbDelete("snapshots",old.id);
+}
+
+function backupStatus(){
+  const interval=Number(state.settings.backupInterval||7);
+  const last=state.settings.lastExternalBackupAt||null;
+  const reference=last||state.profile?.createdAt||(state.profile?.startDate?parseLocalDate(state.profile.startDate).toISOString():new Date().toISOString());
+  const elapsed=Math.max(0,Math.floor((Date.now()-new Date(reference).getTime())/86400000));
+  return {interval,last,elapsed,overdue:elapsed>=interval};
+}
+
+async function markExternalBackup(){
+  const now=new Date().toISOString();
+  await saveSetting("lastExternalBackupAt",now);
+  await createInternalSnapshot("Backup externo realizado");
+  if(!$("#backup-view").classList.contains("hidden")) await renderBackup(); else renderBackupStatus();
+  renderDashboardBackupAlert();
 }
 
 function buildDynamicFields(){
@@ -113,9 +208,12 @@ function bindEvents(){
   $("#effect-select").addEventListener("change",renderEffectsChart);
   window.addEventListener("resize",debounce(()=>{ if(!$("#evolution-view").classList.contains("hidden")){renderEvolutionChart();renderEffectsChart();}},180));
   $("#export-csv").addEventListener("click",exportCSV);
-  $("#export-json").addEventListener("click",exportJSON);
-  $("#export-all").addEventListener("click",exportJSON);
+  $("#export-json").addEventListener("click",()=>exportJSON(true));
+  $("#share-json").addEventListener("click",shareJSON);
+  $("#export-all").addEventListener("click",()=>exportJSON(true));
   $("#import-json").addEventListener("change",importJSON);
+  $$("input[name='backupInterval']").forEach(input=>input.addEventListener("change",changeBackupInterval));
+  $("#internal-snapshots").addEventListener("click",restoreInternalSnapshot);
   $("#delete-all").addEventListener("click",confirmDeleteAll);
   $("#install-btn").addEventListener("click",installApp);
   $("#update-app").addEventListener("click",()=>pendingWorker?.postMessage({type:"SKIP_WAITING"}));
@@ -131,6 +229,7 @@ async function saveInitialProfile(event){
   const profile = readProfileForm("setup");
   profile.id="main"; profile.createdAt=new Date().toISOString();
   await dbPut("profile",profile); state.profile=profile;
+  await createInternalSnapshot("Configuração inicial");
   showToast("Acompanhamento configurado."); showView("dashboard");
 }
 
@@ -146,6 +245,7 @@ function readProfileForm(prefix){
 async function saveSettings(event){
   event.preventDefault(); const updated=readProfileForm("settings");
   state.profile={...state.profile,...updated,id:"main"}; await dbPut("profile",state.profile);
+  await createInternalSnapshot("Perfil ou tratamento alterado");
   showToast("Configurações salvas."); renderDashboard();
 }
 
@@ -163,6 +263,7 @@ function showView(name,updateHash=true){
   if(name==="history") renderHistory();
   if(name==="evolution") renderEvolution();
   if(name==="comparison") renderComparison();
+  if(name==="backup") renderBackup();
   if(name==="settings") fillSettings();
   window.scrollTo({top:0,behavior:"smooth"});
   setTimeout(()=>$("#main-content").focus({preventScroll:true}),0);
@@ -174,12 +275,21 @@ function renderDashboard(){
   $("#dashboard-treatment").textContent=`${profile.medication} — ${formatDose(profile.dose)}`;
   $("#dashboard-start").textContent=formatDate(profile.startDate);
   $("#dashboard-day").textContent=`Dia ${dayOfTreatment(new Date())}`;
-  const latest=state.records.at(-1);
+  const latest=state.records[state.records.length-1];
   $("#dashboard-last").textContent=latest?`${formatDate(latest.date)} · média ${formatNumber(latest.average)}`:"Ainda não realizada";
   const box=$("#dashboard-summary");
   if(!state.records.length) box.innerHTML="<strong>Comece pelo seu marco inicial.</strong> A primeira avaliação será sugerida como referência para as próximas.";
   else if(state.baselineId){ const baseline=state.records.find(r=>r.id===state.baselineId); box.innerHTML=baseline?`Você tem <strong>${state.records.length} ${state.records.length===1?"registro":"registros"}</strong>. Marco inicial em ${formatDate(baseline.date)}.`:""; }
   else box.innerHTML=`Você tem <strong>${state.records.length} registros</strong>. Ainda não há marco inicial definido.`;
+  renderDashboardBackupAlert();
+}
+
+function renderDashboardBackupAlert(){
+  const alert=$("#dashboard-backup-alert");
+  if(!alert||!state.profile)return;
+  const status=backupStatus();
+  alert.classList.toggle("hidden",!status.overdue);
+  if(status.overdue) alert.innerHTML=`<strong>Backup externo atrasado</strong><p>Já se passaram ${status.elapsed} dia(s) desde a última referência de backup. <button class="button button-secondary compact" data-go="backup" type="button">Fazer backup agora</button></p>`;
 }
 
 function prepareEvaluation(record=null){
@@ -206,7 +316,7 @@ function collectRecord(){
   const now=new Date();
   const sleepEntered=$("#sleep-start").value||$("#sleep-end").value||$("#awakenings").value||$("#sleep-notes").value.trim();
   return {
-    id:existingId||crypto.randomUUID(),createdAt:existing?.createdAt||now.toISOString(),updatedAt:now.toISOString(),
+    id:existingId||createId(),createdAt:existing?.createdAt||now.toISOString(),updatedAt:now.toISOString(),
     date:existing?.date||localDateInput(now),time:existing?.time||now.toTimeString().slice(0,5),day:existing?.day||dayOfTreatment(now),
     medication:$("#record-medication").value.trim(),dose:Number($("#record-dose").value),medicationTime:$("#medication-time").value,
     tookDose:document.querySelector('input[name="tookDose"]:checked')?.value||"nao_informado",
@@ -218,7 +328,7 @@ function collectRecord(){
 }
 
 async function saveRecord(event){
-  event.preventDefault(); const record=collectRecord();
+  event.preventDefault(); const wasEditing=Boolean($("#record-id").value); const record=collectRecord();
   if(record.isBaseline && state.baselineId && state.baselineId!==record.id){
     const confirmed=await modalConfirm("Substituir marco inicial?","Já existe um marco inicial. O registro anterior continuará no histórico, mas deixará de ser a referência.","Substituir");
     if(!confirmed)return;
@@ -232,6 +342,7 @@ async function saveRecord(event){
   await dbPut("records",record); const index=state.records.findIndex(r=>r.id===record.id);
   if(index>=0)state.records[index]=record;else state.records.push(record);
   state.records.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  await createInternalSnapshot(wasEditing?"Avaliação editada":"Avaliação criada");
   resetEvaluationForm(); showToast("Avaliação salva neste dispositivo."); showView("history");
 }
 
@@ -265,7 +376,8 @@ async function handleHistoryAction(event){
   if(button.dataset.action==="delete"){
     const ok=await modalConfirm("Excluir registro?","Tem certeza de que deseja excluir este registro? Esta ação não poderá ser desfeita.","Excluir",true);if(!ok)return;
     await dbDelete("records",record.id);state.records=state.records.filter(r=>r.id!==record.id);
-    if(state.baselineId===record.id){state.baselineId=null;await saveSetting("baselineId",null);}renderHistory();showToast("Registro excluído.");
+    if(state.baselineId===record.id){state.baselineId=null;await saveSetting("baselineId",null);}
+    await createInternalSnapshot("Avaliação excluída");renderHistory();showToast("Registro excluído.");
   }
 }
 
@@ -276,7 +388,7 @@ function showRecordModal(r){
 }
 
 function renderEvolution(){
-  const baseline=state.records.find(r=>r.id===state.baselineId),current=state.records.at(-1);
+  const baseline=state.records.find(r=>r.id===state.baselineId),current=state.records[state.records.length-1];
   const initial=baseline?.average,currentAvg=current?.average,delta=initial!=null&&currentAvg!=null?currentAvg-initial:null;
   $("#evolution-stats").innerHTML=[["Média inicial",initial],["Média atual",currentAvg],["Variação desde o marco",delta]].map((s,i)=>`<div class="card stat-card"><span>${s[0]}</span><strong>${s[1]==null?"—":`${i===2&&s[1]>0?"+":""}${formatNumber(s[1])}${i===2?" ponto(s)":" / 10"}`}</strong></div>`).join("");
   renderEvolutionChart();renderEffectsChart();
@@ -313,7 +425,7 @@ function drawLineChart(canvas,labels,series,maxY,baselineIndex){
 }
 
 function renderComparison(){
-  const box=$("#comparison-content"),baseline=state.records.find(r=>r.id===state.baselineId),current=state.records.at(-1);
+  const box=$("#comparison-content"),baseline=state.records.find(r=>r.id===state.baselineId),current=state.records[state.records.length-1];
   if(!baseline||!current){box.innerHTML=`<div class="card empty-state"><strong>Comparação indisponível</strong><p>Defina um marco inicial e mantenha ao menos um registro para visualizar a comparação.</p><button class="button button-primary" data-go="history">Abrir histórico</button></div>`;return;}
   const rows=INDICATORS.map(i=>{const a=baseline.scores[i[0]],b=current.scores[i[0]],d=b-a;return `<tr><td>${escapeHtml(i[1])}</td><td>${a}</td><td>${b}</td><td class="${d>0?"delta-positive":d<0?"delta-negative":""}">${d>0?"+":""}${d}</td></tr>`}).join("");
   const avgDelta=current.average-baseline.average;
@@ -334,9 +446,89 @@ function exportCSV(){
 }
 function csvCell(value){const text=String(value??"").replace(/"/g,'""');return /[;"\r\n]/.test(text)?`"${text}"`:text;}
 
-function exportJSON(){
-  const backup={version:1,appVersion:APP_VERSION,backupDate:new Date().toISOString(),profile:state.profile,settings:state.settings,records:state.records,baselineId:state.baselineId};
-  downloadBlob(JSON.stringify(backup,null,2),`acompanhamento_backup_${localDateInput(new Date())}.json`,"application/json");showToast("Backup criado.");
+function makeBackupFile(){
+  const content=JSON.stringify(buildBackupPayload(),null,2);
+  const filename=`acompanhamento_backup_${localDateInput(new Date())}.json`;
+  const file=typeof File==="function"?new File([content],filename,{type:"application/json"}):null;
+  return {content,filename,file};
+}
+
+async function exportJSON(markAsExternal=false){
+  const backup=makeBackupFile();
+  downloadBlob(backup.content,backup.filename,"application/json");
+  if(markAsExternal) await markExternalBackup();
+  showToast("Backup JSON criado.");
+}
+
+async function shareJSON(){
+  const backup=makeBackupFile();
+  if(backup.file && navigator.share && (!navigator.canShare || navigator.canShare({files:[backup.file]}))){
+    try{
+      await navigator.share({title:"Backup - Meu Acompanhamento",text:"Backup dos meus registros do aplicativo Meu Acompanhamento.",files:[backup.file]});
+      await markExternalBackup();showToast("Backup compartilhado.");return;
+    }catch(error){
+      if(error?.name==="AbortError")return;
+      console.warn("Compartilhamento indisponível; usando download.",error);
+    }
+  }
+  await exportJSON(true);
+  showToast("O compartilhamento não está disponível neste navegador; o arquivo foi baixado.");
+}
+
+async function renderBackup(){
+  renderBackupStatus();
+  const interval=String(state.settings.backupInterval||7);
+  const option=document.querySelector(`input[name="backupInterval"][value="${interval}"]`);
+  if(option)option.checked=true;
+  const snapshots=(await dbGetAll("snapshots")).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const list=$("#internal-snapshots");
+  if(!snapshots.length){list.innerHTML='<div class="empty-state"><strong>Nenhuma cópia interna</strong><p>A primeira cópia será criada automaticamente após uma alteração.</p></div>';return;}
+  list.innerHTML=snapshots.map(item=>`<div class="snapshot-item"><div><strong>${formatDateTime(item.createdAt)}</strong><small>${escapeHtml(item.reason||"Alteração registrada")} · ${item.data?.records?.length||0} registro(s)</small></div><button class="button button-secondary compact" data-snapshot-id="${item.id}" type="button">Restaurar esta cópia</button></div>`).join("");
+}
+
+function renderBackupStatus(){
+  const box=$("#backup-status");if(!box||!state.profile)return;
+  const status=backupStatus();
+  box.classList.toggle("is-current",!status.overdue);
+  const last=status.last?formatDateTime(status.last):"Nunca realizado";
+  if(status.overdue){
+    box.innerHTML=`<strong>Backup externo atrasado</strong><p>Último backup externo: ${last}. O lembrete está configurado para cada ${status.interval} dias.</p><button class="button button-primary compact" id="status-backup-now" type="button">Fazer backup agora</button>`;
+    $("#status-backup-now").addEventListener("click",()=>exportJSON(true));
+  }else{
+    box.innerHTML=`<strong>Backup externo em dia</strong><p>Último backup externo: ${last}. Próximo lembrete após ${status.interval} dias.</p>`;
+  }
+}
+
+async function changeBackupInterval(event){
+  const days=Number(event.target.value);
+  await saveSetting("backupInterval",days);
+  await createInternalSnapshot(`Lembrete de backup alterado para ${days} dias`);
+  await renderBackup();renderDashboardBackupAlert();
+  showToast(`Lembrete configurado para cada ${days} dias.`);
+}
+
+async function restoreInternalSnapshot(event){
+  const button=event.target.closest("[data-snapshot-id]");if(!button)return;
+  const snapshots=await dbGetAll("snapshots"),snapshot=snapshots.find(item=>item.id===button.dataset.snapshotId);
+  if(!snapshot)return;
+  const ok=await modalConfirm("Restaurar cópia interna?",`Os dados atuais serão substituídos pela cópia de ${formatDateTime(snapshot.createdAt)}.`,"Restaurar");
+  if(!ok)return;
+  await applyBackupData(snapshot.data);
+  await createInternalSnapshot("Cópia interna restaurada");
+  showToast("Cópia interna restaurada.");showView("dashboard");
+}
+
+async function applyBackupData(data){
+  validateBackup(data);
+  await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings")]);
+  state.profile=data.profile?{...data.profile,id:"main"}:null;
+  state.records=dedupeRecords(data.records).map(normaliseRecord).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  state.settings={...(data.settings||{})};
+  state.baselineId=data.baselineId||state.settings.baselineId||state.records.find(r=>r.isBaseline)?.id||null;
+  if(state.profile)await dbPut("profile",state.profile);
+  for(const record of state.records)await dbPut("records",record);
+  for(const [key,value] of Object.entries(state.settings))await dbPut("settings",{key,value});
+  await saveSetting("baselineId",state.baselineId);
 }
 
 async function importJSON(event){
@@ -351,7 +543,9 @@ async function importJSON(event){
   state.records=merged.map(normaliseRecord).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   state.settings={...(choice==="merge"?state.settings:{}),...(data.settings||{})};state.baselineId=data.baselineId||state.settings.baselineId||state.records.find(r=>r.isBaseline)?.id||null;
   for(const [key,value] of Object.entries(state.settings))await dbPut("settings",{key,value});
-  await saveSetting("baselineId",state.baselineId);showToast(`${state.records.length} registro(s) disponível(is) após a restauração.`);showView("dashboard");
+  await saveSetting("baselineId",state.baselineId);
+  await createInternalSnapshot("Backup JSON restaurado");
+  showToast(`${state.records.length} registro(s) disponível(is) após a restauração.`);showView("dashboard");
 }
 
 function validateBackup(data){
@@ -367,7 +561,7 @@ async function confirmDeleteAll(){
   const first=await modalConfirm("Apagar todos os dados?","Esta ação não poderá ser desfeita. Faça um backup antes de continuar.","Continuar",true);if(!first)return;
   const second=await modalChoice("Confirmação final",`<p>Digite <strong>APAGAR</strong> para remover definitivamente todos os dados deste dispositivo.</p><label>Confirmação<input id="delete-confirm-text" autocomplete="off"></label>`,[{value:"confirm",label:"Apagar definitivamente",className:"button-danger"},{value:null,label:"Cancelar",className:"button-secondary"}],()=>$("#delete-confirm-text").value.trim().toUpperCase()==="APAGAR");
   if(second!=="confirm"){if(second)showToast("Digite APAGAR para confirmar.",true);return;}
-  await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings")]);state={profile:null,settings:{},records:[],baselineId:null};resetEvaluationForm();setDefaultDates();showToast("Todos os dados foram apagados.");showView("setup");
+  await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings"),dbClear("snapshots")]);state={profile:null,settings:{},records:[],baselineId:null};resetEvaluationForm();setDefaultDates();showToast("Todos os dados foram apagados.");showView("setup");
 }
 
 function registerServiceWorker(){
@@ -394,6 +588,7 @@ function dayOfTreatment(date){const start=parseLocalDate(state.profile?.startDat
 function parseLocalDate(value){const [y,m,d]=String(value).split("-").map(Number);return new Date(y,m-1,d);}
 function localDateInput(date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;}
 function formatDate(value){if(!value)return"—";return new Intl.DateTimeFormat("pt-BR").format(parseLocalDate(value));}
+function formatDateTime(value){if(!value)return"—";return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date(value));}
 function formatNumber(value){return new Intl.NumberFormat("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number(value));}
 function formatDose(value){return `${new Intl.NumberFormat("pt-BR",{maximumFractionDigits:1}).format(Number(value))} mg`;}
 function average(values){return values.reduce((sum,v)=>sum+Number(v),0)/values.length;}
@@ -402,5 +597,9 @@ function escapeHtml(value){return String(value??"").replace(/[&<>'"]/g,c=>({"&":
 function downloadBlob(content,filename,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function showToast(message,error=false){const el=$("#toast");el.textContent=message;el.style.background=error?"#8f251e":"#16343d";el.classList.add("show");clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove("show"),3500);}
 function clamp(value,min,max){return Math.min(max,Math.max(min,value));}
+function createId(){
+  if(window.crypto && typeof window.crypto.randomUUID==="function") return window.crypto.randomUUID();
+  return "registro-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
+}
 function getCss(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();}
 function debounce(fn,wait){let timer;return(...args)=>{clearTimeout(timer);timer=setTimeout(()=>fn(...args),wait);};}

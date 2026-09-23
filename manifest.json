@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Meu Acompanhamento",
   "short_name": "Acompanhamento",
-  "description": "Diário pessoal para acompanhamento longitudinal de sintomas e sensações durante o tratamento.",
+  "description": "Diário pessoal para acompanhamento longitudinal de funcionamento, sintomas e sensações durante um tratamento.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
