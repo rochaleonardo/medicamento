@@ -12,6 +12,8 @@ const path = require('path');
 
   await page.fill('#setup-name','Leonardo');
   await page.fill('#setup-start-date','2026-09-15');
+  await page.fill('#setup-medication','Medicamento de teste');
+  await page.fill('#setup-active','Princípio ativo de teste');
   await page.fill('#setup-dose','40');
   await page.click('#setup-form button[type=submit]');
   await page.waitForSelector('#dashboard-view:not(.hidden)');
@@ -44,11 +46,14 @@ const path = require('path');
   if(await page.locator('#evolution-chart').getAttribute('width') === null) throw new Error('Gráfico não foi desenhado');
 
   await page.click('[data-go="backup"]');
+  if(await page.locator('.snapshot-item').count() < 1) throw new Error('Cópia interna automática não foi criada');
+  if(!(await page.locator('input[name="backupInterval"][value="7"]').isChecked())) throw new Error('Intervalo padrão de backup incorreto');
   const csvPromise=page.waitForEvent('download'); await page.click('#export-csv'); const csv=await csvPromise; const csvPath=await csv.path();
   const csvText=fs.readFileSync(csvPath,'utf8');
-  if(!csvText.startsWith('\uFEFF') || !csvText.includes(';') || !csvText.includes('Leonardo') && !csvText.includes('Atentah')) throw new Error('CSV inválido');
+  if(!csvText.startsWith('\uFEFF') || !csvText.includes(';') || !csvText.includes('Medicamento de teste')) throw new Error('CSV inválido');
   const jsonPromise=page.waitForEvent('download'); await page.click('#export-json'); const jsonDownload=await jsonPromise; const jsonPath=await jsonDownload.path();
   const backup=JSON.parse(fs.readFileSync(jsonPath,'utf8')); if(backup.records.length!==1||!backup.baselineId)throw new Error('Backup JSON inválido');
+  if(!(await page.locator('#backup-status').textContent()).includes('Último backup externo')) throw new Error('Indicador do último backup ausente');
 
   await page.click('[data-go="history"]');
   await page.click('[data-action="delete"]');

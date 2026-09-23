@@ -51,7 +51,7 @@ for ref in cached:
 assert "SKIP_WAITING" in sw and "caches.delete" in sw and "index.html" in sw
 
 app=(DIST/"app.js").read_text(encoding="utf-8")
-required=["indexedDB.open","exportCSV","exportJSON","importJSON","confirmDeleteAll","drawLineChart","baselineId","beforeinstallprompt","controllerchange"]
+required=["indexedDB.open","exportCSV","exportJSON","shareJSON","createInternalSnapshot","snapshots","backupInterval","lastExternalBackupAt","importJSON","confirmDeleteAll","drawLineChart","baselineId","beforeinstallprompt","controllerchange"]
 for token in required: assert token in app, f"Função essencial ausente: {token}"
 assert app.count('["attention"')==1
 assert len(re.findall(r'\["(?:insomnia|sleepiness|nausea|dryMouth|appetite|headache|dizziness|tingling|palpitations|anxiety|sweating|constipation)"',app))>=12
