@@ -4,6 +4,14 @@ Aplicativo web instalável (PWA) para registrar percepções sobre funcionamento
 
 O aplicativo é um diário pessoal. Não realiza diagnóstico, não determina se um medicamento está funcionando e não recomenda iniciar, interromper ou alterar doses.
 
+## Termos de Uso
+
+Antes do primeiro uso, o aplicativo apresenta os Termos de Uso e exige que o usuário marque a declaração de leitura e aceite. Sem esse aceite, as telas de cadastro, restauração e acompanhamento permanecem bloqueadas.
+
+O aceite é registrado somente neste dispositivo, com a versão e a data dos termos. O texto completo continua disponível em **Configurações → Termos de Uso**. Quando a versão dos termos for alterada, o aplicativo solicitará um novo aceite.
+
+O registro de aceite não é incluído nos backups JSON. Assim, restaurar dados em outro dispositivo não transfere automaticamente a concordância de outra instalação ou pessoa.
+
 ## Privacidade
 
 Os dados ficam somente no navegador do dispositivo, armazenados no IndexedDB. Não há backend, conta externa, API paga, ferramenta de análise ou envio de dados a servidores. Apagar os dados do navegador, remover o site ou trocar de aparelho pode eliminar os registros; por isso, faça backups JSON periódicos.
@@ -91,7 +99,7 @@ Use **Exportar CSV**. O arquivo é gerado em UTF-8 com BOM e separador por ponto
 
 Quando uma nova versão dos arquivos for publicada, o aplicativo informa que há atualização disponível. Atualizar o PWA troca somente os arquivos do aplicativo e não apaga o IndexedDB.
 
-Versão atual: **1.2.1**.
+Versão atual: **1.3.0**.
 
 ## Desenvolvimento local
 

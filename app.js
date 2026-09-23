@@ -1,6 +1,7 @@
 "use strict";
 
-const APP_VERSION = "1.2.1";
+const APP_VERSION = "1.3.0";
+const TERMS_VERSION = "1.0";
 const DB_NAME = "MeuAcompanhamento";
 const DB_VERSION = 2;
 const FALLBACK_KEY = "meuAcompanhamentoDados";
@@ -42,15 +43,37 @@ async function init(){
     db = await openDB();
     await migrateLegacyDatabase();
     await loadState();
-    if(state.profile){ showView("dashboard"); } else { setDefaultDates(); showView("setup"); }
     registerServiceWorker();
+    showInitialScreen();
   }catch(error){
     console.error(error);
     storageMode = "fallback";
     await loadState();
-    if(state.profile){ showView("dashboard"); } else { setDefaultDates(); showView("setup"); }
+    registerServiceWorker();
+    showInitialScreen();
     showToast("Aplicativo aberto em modo local compatível com este navegador.");
   }
+}
+
+function showInitialScreen(){
+  if(!hasAcceptedTerms()){ showTermsDialog(true); return; }
+  if(state.profile) showView("dashboard");
+  else { setDefaultDates(); showView("setup"); }
+}
+
+function hasAcceptedTerms(){
+  return state.settings.termsAcceptedVersion===TERMS_VERSION && Boolean(state.settings.termsAcceptedAt);
+}
+
+function sanitiseBackupSettings(settings={}){
+  const clean={...settings};
+  delete clean.termsAcceptedVersion;
+  delete clean.termsAcceptedAt;
+  return clean;
+}
+
+function currentTermsAcceptance(){
+  return hasAcceptedTerms()?{termsAcceptedVersion:TERMS_VERSION,termsAcceptedAt:state.settings.termsAcceptedAt}:{};
 }
 
 async function migrateLegacyDatabase(){
@@ -152,7 +175,7 @@ async function loadState(){
 }
 
 function buildBackupPayload(date=new Date()){
-  return {version:1,appVersion:APP_VERSION,backupDate:date.toISOString(),profile:state.profile,settings:{...state.settings},records:[...state.records],baselineId:state.baselineId};
+  return {version:1,appVersion:APP_VERSION,backupDate:date.toISOString(),profile:state.profile,settings:sanitiseBackupSettings(state.settings),records:[...state.records],baselineId:state.baselineId};
 }
 
 async function createInternalSnapshot(reason){
@@ -216,6 +239,7 @@ function bindEvents(){
   $$("input[name='backupInterval']").forEach(input=>input.addEventListener("change",changeBackupInterval));
   $("#internal-snapshots").addEventListener("click",restoreInternalSnapshot);
   $("#delete-all").addEventListener("click",confirmDeleteAll);
+  $("#view-terms").addEventListener("click",()=>showTermsDialog(false));
   $("#install-btn").addEventListener("click",installApp);
   $("#update-app").addEventListener("click",()=>pendingWorker?.postMessage({type:"SKIP_WAITING"}));
   window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;$("#install-btn").classList.remove("hidden");});
@@ -251,6 +275,7 @@ async function saveSettings(event){
 }
 
 function showView(name,updateHash=true){
+  if(!hasAcceptedTerms()){ showTermsDialog(true); return; }
   if(!state.profile && name!=="setup") name="setup";
   const valid=["setup","dashboard","evaluation","history","evolution","comparison","backup","settings"];
   if(!valid.includes(name)) name=state.profile?"dashboard":"setup";
@@ -435,6 +460,8 @@ function renderComparison(){
 
 function fillSettings(){
   const p=state.profile;[["name",p.name],["start-date",p.startDate],["medication",p.medication],["active",p.activeIngredient],["dose",p.dose],["other-meds",p.otherMedications],["notes",p.notes]].forEach(([id,v])=>$("#settings-"+id).value=v??"");
+  const acceptedAt=state.settings.termsAcceptedAt;
+  $("#terms-acceptance-status").textContent=acceptedAt?`Termos versão ${TERMS_VERSION} aceitos neste dispositivo em ${formatDateTime(acceptedAt)}.`:"Os Termos de Uso ainda não foram aceitos neste dispositivo.";
 }
 
 function exportCSV(){
@@ -521,10 +548,11 @@ async function restoreInternalSnapshot(event){
 
 async function applyBackupData(data){
   validateBackup(data);
+  const termsAcceptance=currentTermsAcceptance();
   await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings")]);
   state.profile=data.profile?{...data.profile,id:"main"}:null;
   state.records=dedupeRecords(data.records).map(normaliseRecord).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-  state.settings={...(data.settings||{})};
+  state.settings={...sanitiseBackupSettings(data.settings||{}),...termsAcceptance};
   state.baselineId=data.baselineId||state.settings.baselineId||state.records.find(r=>r.isBaseline)?.id||null;
   if(state.profile)await dbPut("profile",state.profile);
   for(const record of state.records)await dbPut("records",record);
@@ -537,12 +565,13 @@ async function importJSON(event){
   let data;try{data=JSON.parse(await file.text());validateBackup(data);}catch(error){showToast(`Backup inválido: ${error.message}`,true);return;}
   const choice=await modalChoice("Backup validado",`<p>Foram encontrados <strong>${data.records.length} registro(s)</strong>.</p><p>Deseja substituir os registros atuais ou mesclar os registros, evitando duplicatas?</p>`,[{value:"merge",label:"Mesclar",className:"button-primary"},{value:"replace",label:"Substituir",className:"button-secondary"},{value:null,label:"Cancelar",className:"button-ghost"}]);
   if(!choice)return;
+  const termsAcceptance=currentTermsAcceptance();
   if(choice==="replace"){await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings")]);state.records=[];}
   const merged=choice==="merge"?dedupeRecords([...state.records,...data.records]):dedupeRecords(data.records);
   if(data.profile){state.profile={...data.profile,id:"main"};await dbPut("profile",state.profile);}
   for(const record of merged)await dbPut("records",normaliseRecord(record));
   state.records=merged.map(normaliseRecord).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
-  state.settings={...(choice==="merge"?state.settings:{}),...(data.settings||{})};state.baselineId=data.baselineId||state.settings.baselineId||state.records.find(r=>r.isBaseline)?.id||null;
+  state.settings={...(choice==="merge"?sanitiseBackupSettings(state.settings):{}),...sanitiseBackupSettings(data.settings||{}),...termsAcceptance};state.baselineId=data.baselineId||state.settings.baselineId||state.records.find(r=>r.isBaseline)?.id||null;
   for(const [key,value] of Object.entries(state.settings))await dbPut("settings",{key,value});
   await saveSetting("baselineId",state.baselineId);
   await createInternalSnapshot("Backup JSON restaurado");
@@ -562,7 +591,7 @@ async function confirmDeleteAll(){
   const first=await modalConfirm("Apagar todos os dados?","Esta ação não poderá ser desfeita. Faça um backup antes de continuar.","Continuar",true);if(!first)return;
   const second=await modalChoice("Confirmação final",`<p>Digite <strong>APAGAR</strong> para remover definitivamente todos os dados deste dispositivo.</p><label>Confirmação<input id="delete-confirm-text" autocomplete="off"></label>`,[{value:"confirm",label:"Apagar definitivamente",className:"button-danger"},{value:null,label:"Cancelar",className:"button-secondary"}],()=>$("#delete-confirm-text").value.trim().toUpperCase()==="APAGAR");
   if(second!=="confirm"){if(second)showToast("Digite APAGAR para confirmar.",true);return;}
-  await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings"),dbClear("snapshots")]);state={profile:null,settings:{},records:[],baselineId:null};resetEvaluationForm();setDefaultDates();showToast("Todos os dados foram apagados.");showView("setup");
+  await Promise.all([dbClear("records"),dbClear("profile"),dbClear("settings"),dbClear("snapshots")]);state={profile:null,settings:{},records:[],baselineId:null};resetEvaluationForm();setDefaultDates();showToast("Todos os dados foram apagados.");showTermsDialog(true);
 }
 
 function registerServiceWorker(){
@@ -577,6 +606,7 @@ function showUpdate(worker){pendingWorker=worker;$("#update-banner").classList.r
 async function installApp(){if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$("#install-btn").classList.add("hidden");}
 
 function showModal(title,body,actions){
+  $("#modal").classList.remove("terms-modal");
   $("#modal-title").textContent=title;$("#modal-body").innerHTML=body;const actionBox=$("#modal-actions");actionBox.innerHTML="";
   actions.forEach(a=>{const b=document.createElement("button");b.type="button";b.className=`button ${a.className||"button-secondary"}`;b.textContent=a.label;b.addEventListener("click",()=>{closeModal();a.onClick?.();});actionBox.appendChild(b);});
   $("#modal-backdrop").classList.remove("hidden");setTimeout(()=>actionBox.querySelector("button")?.focus(),0);
@@ -584,6 +614,36 @@ function showModal(title,body,actions){
 function closeModal(){$("#modal-backdrop").classList.add("hidden");}
 function modalConfirm(title,message,confirmLabel,danger=false){return new Promise(resolve=>showModal(title,`<p>${escapeHtml(message)}</p>`,[{label:"Cancelar",className:"button-secondary",onClick:()=>resolve(false)},{label:confirmLabel,className:danger?"button-danger":"button-primary",onClick:()=>resolve(true)}]));}
 function modalChoice(title,body,choices,validator){return new Promise(resolve=>{showModal(title,body,choices.map(c=>({...c,onClick:()=>{if(validator&&!validator()){showToast("Confira a confirmação solicitada.",true);resolve("invalid");}else resolve(c.value);}})));});}
+
+function termsContentHtml(){
+  return $("#terms-content-template").content.firstElementChild.outerHTML;
+}
+
+function showTermsDialog(required){
+  if(required){
+    $$(".view").forEach(view=>view.classList.add("hidden"));
+    $("#bottom-nav").classList.add("hidden");
+  }
+  const consent=required?`<label class="terms-consent"><input id="terms-consent-checkbox" type="checkbox"><span>Li e aceito os Termos de Uso e reconheço que os dados são armazenados localmente e que sou responsável por realizar backups externos.</span></label>`:"";
+  const actions=required?[{label:"Aceitar e continuar",className:"button-primary",onClick:acceptCurrentTerms}]:[{label:"Fechar",className:"button-secondary"}];
+  showModal("Termos de Uso e Privacidade",termsContentHtml()+consent,actions);
+  $("#modal").classList.add("terms-modal");
+  if(required){
+    const checkbox=$("#terms-consent-checkbox"),button=$("#modal-actions button");
+    button.disabled=true;
+    checkbox.addEventListener("change",()=>{button.disabled=!checkbox.checked;});
+    checkbox.focus();
+  }
+}
+
+async function acceptCurrentTerms(){
+  const acceptedAt=new Date().toISOString();
+  await saveSetting("termsAcceptedVersion",TERMS_VERSION);
+  await saveSetting("termsAcceptedAt",acceptedAt);
+  showToast("Termos de Uso aceitos neste dispositivo.");
+  if(state.profile) showView("dashboard");
+  else { setDefaultDates(); showView("setup"); }
+}
 
 function dayOfTreatment(date){const start=parseLocalDate(state.profile?.startDate||localDateInput(date));const current=new Date(date.getFullYear(),date.getMonth(),date.getDate());return Math.max(1,Math.floor((current-start)/86400000)+1);}
 function parseLocalDate(value){const [y,m,d]=String(value).split("-").map(Number);return new Date(y,m-1,d);}

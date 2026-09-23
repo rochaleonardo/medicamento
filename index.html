@@ -184,8 +184,13 @@
         <label>Observações <textarea id="settings-notes" rows="3" maxlength="1000"></textarea></label>
         <button class="button button-primary" type="submit">Salvar alterações</button>
       </form>
+      <section class="card section-card terms-settings-card">
+        <h2>Termos de Uso</h2>
+        <p id="terms-acceptance-status">Consulte as condições de utilização do aplicativo.</p>
+        <button id="view-terms" class="button button-secondary" type="button">Consultar Termos de Uso</button>
+      </section>
       <section class="card danger-zone"><h2>Apagar dados</h2><p>Remove perfil, configurações e todos os registros deste dispositivo.</p><button id="delete-all" class="button button-danger" type="button">Apagar todos os dados deste dispositivo</button></section>
-      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.2.1</span></p></section>
+      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.3.0</span></p></section>
     </section>
   </main>
 
@@ -198,6 +203,55 @@
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <template id="terms-content-template">
+    <article class="terms-document">
+      <p class="terms-updated"><strong>Última atualização:</strong> 23 de setembro de 2026 · versão 1.0 dos termos</p>
+      <p>Ao acessar, instalar ou utilizar o <strong>Meu Acompanhamento</strong>, o usuário declara que leu, compreendeu e concorda com estes Termos de Uso. Caso não concorde, não deverá utilizar o aplicativo.</p>
+
+      <h3>1. Finalidade do aplicativo</h3>
+      <p>O Meu Acompanhamento é uma ferramenta gratuita destinada exclusivamente ao registro, à organização e à visualização de informações inseridas pelo próprio usuário. Funciona como um diário pessoal e não constitui serviço médico, farmacêutico, psicológico, terapêutico ou de qualquer outra natureza profissional.</p>
+
+      <h3>2. Ausência de diagnóstico e orientação profissional</h3>
+      <p>O aplicativo não realiza diagnósticos, não determina se um medicamento está funcionando, não prescreve medicamentos, não recomenda iniciar, interromper, substituir ou alterar doses e não atribui automaticamente sintomas ou sensações a determinado medicamento.</p>
+      <p>As informações exibidas têm caráter exclusivamente organizacional e informativo. Decisões relacionadas à saúde, medicamentos ou tratamentos devem ser tomadas com orientação de profissional habilitado. Em situações de urgência ou emergência, procure imediatamente um serviço de saúde.</p>
+
+      <h3>3. Gratuidade e disponibilidade</h3>
+      <p>O aplicativo é fornecido gratuitamente, no estado em que se encontra, sem garantia de funcionamento contínuo, ininterrupto, livre de erros ou compatível com todos os aparelhos, navegadores e sistemas operacionais. O desenvolvedor poderá corrigir, modificar, atualizar, interromper ou descontinuar o aplicativo.</p>
+
+      <h3>4. Armazenamento local e privacidade</h3>
+      <p>Os registros pessoais são armazenados localmente no dispositivo e no navegador utilizados. O aplicativo não possui conta de usuário, servidor próprio ou banco de dados remoto destinado ao recebimento desses registros. O desenvolvedor não recebe, consulta, recupera ou mantém cópia do nome, medicamentos, doses, sintomas, avaliações, informações de sono, observações ou histórico.</p>
+      <p>O provedor que hospeda os arquivos públicos do aplicativo poderá registrar dados técnicos de acesso, como endereço IP, data, horário e navegador, conforme suas próprias políticas. Esses registros técnicos não correspondem ao conteúdo do diário armazenado localmente.</p>
+
+      <h3>5. Responsabilidade do usuário</h3>
+      <p>O usuário é responsável pela veracidade das informações inseridas, pela segurança do dispositivo, pela proteção de seus arquivos e pela criação e conservação de backups externos. As cópias internas automáticas permanecem no mesmo aparelho e não substituem um backup JSON salvo externamente.</p>
+
+      <h3>6. Risco de perda dos dados</h3>
+      <p>Os registros podem ser apagados ou ficar inacessíveis devido à limpeza dos dados do navegador, desinstalação, troca, perda ou defeito do aparelho, restauração do sistema, falta de espaço, alterações do navegador ou sistema operacional, atualizações incompatíveis, exclusão acidental ou outras falhas técnicas.</p>
+      <p>Os lembretes e indicadores de backup são apenas auxiliares e não garantem que o arquivo tenha sido corretamente salvo, preservado ou possa ser restaurado. O usuário deve confirmar periodicamente a existência do backup externo.</p>
+
+      <h3>7. Exportação e serviços externos</h3>
+      <p>Ao exportar ou compartilhar arquivos CSV ou JSON, o usuário assume a responsabilidade pelo destino escolhido. Depois que o arquivo deixa o aplicativo, sua proteção depende do usuário e do serviço utilizado, como Arquivos, iCloud Drive, Google Drive, e-mail ou aplicativo de mensagens. O desenvolvedor não controla as práticas de privacidade, segurança ou disponibilidade desses serviços.</p>
+
+      <h3>8. Segurança</h3>
+      <p>O armazenamento local reduz o envio de informações pessoais, mas não elimina todos os riscos. Pessoas com acesso ao dispositivo desbloqueado, ao navegador, aos arquivos exportados ou às contas de armazenamento poderão visualizar os registros. O aplicativo não deve ser considerado cofre digital, prontuário eletrônico oficial ou mecanismo de arquivamento permanente.</p>
+
+      <h3>9. Limitação de responsabilidade</h3>
+      <p>Na máxima extensão permitida pela legislação aplicável, o desenvolvedor não será responsável por danos decorrentes do uso ou da impossibilidade de uso do aplicativo, de decisões tomadas com base nos registros, de interpretações equivocadas, de alterações de tratamento sem orientação profissional, de perda ou indisponibilidade de dados, de falhas de backup, de incompatibilidades, de serviços de terceiros, de acesso não autorizado ao dispositivo ou de interrupções e falhas técnicas.</p>
+      <p>O aplicativo não oferece garantia de resultado, precisão clínica, adequação a uma finalidade específica, preservação permanente dos registros ou funcionamento ininterrupto. Esta limitação não exclui responsabilidades que não possam ser legalmente afastadas.</p>
+
+      <h3>10. Uso adequado</h3>
+      <p>O usuário deverá utilizar o aplicativo de forma lícita. Não é permitido inserir dados de terceiros sem autorização, utilizar a ferramenta para oferecer diagnóstico ou prescrição, substituir documentos profissionais legalmente exigidos, explorar vulnerabilidades ou distribuir versões modificadas de maneira enganosa.</p>
+
+      <h3>11. Propriedade intelectual</h3>
+      <p>O aplicativo, seu código, identidade visual, textos, ícones e demais elementos pertencem aos respectivos autores ou licenciadores. A disponibilização gratuita não implica transferência de direitos de propriedade intelectual.</p>
+
+      <h3>12. Alterações dos termos</h3>
+      <p>Estes termos poderão ser atualizados para acompanhar mudanças no aplicativo, na legislação ou nas práticas de segurança e privacidade. Quando houver uma nova versão dos termos, um novo aceite poderá ser solicitado antes da continuidade do uso.</p>
+
+      <h3>13. Legislação aplicável</h3>
+      <p>Estes termos serão interpretados conforme a legislação da República Federativa do Brasil, preservados todos os direitos obrigatórios que não possam ser limitados ou excluídos contratualmente.</p>
+    </article>
+  </template>
   <div id="modal-backdrop" class="modal-backdrop hidden">
     <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions" class="modal-actions"></div>
