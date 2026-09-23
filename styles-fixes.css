@@ -5,6 +5,32 @@
   color: transparent;
 }
 
+.setup-restore {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.setup-restore > span {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+.setup-restore .button {
+  width: 100%;
+}
+
+.day-orbit span {
+  width: 92px;
+  max-width: 92px;
+  line-height: 1.18;
+  overflow-wrap: normal;
+  text-align: center;
+}
+
 .backup-alert,
 .backup-status {
   border: 1px solid #f1c27d;
@@ -77,6 +103,11 @@
 }
 
 @media (max-width: 520px) {
+  .day-orbit span {
+    width: 86px;
+    max-width: 86px;
+    font-size: .66rem;
+  }
   .snapshot-item {
     align-items: flex-start;
     flex-direction: column;

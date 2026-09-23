@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 const DB_NAME = "MeuAcompanhamento";
 const DB_VERSION = 2;
 const FALLBACK_KEY = "meuAcompanhamentoDados";
@@ -212,6 +212,7 @@ function bindEvents(){
   $("#share-json").addEventListener("click",shareJSON);
   $("#export-all").addEventListener("click",()=>exportJSON(true));
   $("#import-json").addEventListener("change",importJSON);
+  $("#setup-import-json").addEventListener("change",importJSON);
   $$("input[name='backupInterval']").forEach(input=>input.addEventListener("change",changeBackupInterval));
   $("#internal-snapshots").addEventListener("click",restoreInternalSnapshot);
   $("#delete-all").addEventListener("click",confirmDeleteAll);

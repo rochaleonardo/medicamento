@@ -44,6 +44,10 @@
         <label>Observações <textarea id="setup-notes" name="notes" rows="3" maxlength="1000" placeholder="Opcional"></textarea></label>
         <div class="privacy-note"><span aria-hidden="true">⌂</span><span><strong>Privado por padrão.</strong> Nenhuma informação é enviada para servidores externos.</span></div>
         <button class="button button-primary button-large" type="submit">Começar acompanhamento</button>
+        <div class="setup-restore">
+          <span>Já possui registros de outro aparelho ou instalação?</span>
+          <label class="button button-secondary file-button">Restaurar um backup<input id="setup-import-json" type="file" accept="application/json,.json"></label>
+        </div>
       </form>
     </section>
 
@@ -54,7 +58,7 @@
           <h1 id="dashboard-title">Olá, <span id="dashboard-name"></span></h1>
           <p class="hero-subtitle">Um retrato objetivo do seu dia a dia, registro após registro.</p>
         </div>
-        <div class="day-orbit"><strong id="dashboard-day">Dia 1</strong><span>do acompanhamento</span></div>
+        <div class="day-orbit"><strong id="dashboard-day">Dia 1</strong><span>do<br>acompanhamento</span></div>
       </div>
       <div class="treatment-strip">
         <div><span>Tratamento atual</span><strong id="dashboard-treatment">—</strong></div>
@@ -181,7 +185,7 @@
         <button class="button button-primary" type="submit">Salvar alterações</button>
       </form>
       <section class="card danger-zone"><h2>Apagar dados</h2><p>Remove perfil, configurações e todos os registros deste dispositivo.</p><button id="delete-all" class="button button-danger" type="button">Apagar todos os dados deste dispositivo</button></section>
-      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.2.0</span></p></section>
+      <section class="card section-card"><h2>Sobre</h2><p>Este aplicativo é uma ferramenta de registro e acompanhamento pessoal. Ele não realiza diagnóstico, não determina se um medicamento está funcionando e não fornece recomendações para iniciar, interromper ou alterar doses de medicamentos.</p><p>As informações registradas podem ser utilizadas pelo usuário para conversar com seu médico ou outro profissional de saúde.</p><p class="version-label">Versão do aplicativo: <span id="app-version">1.2.1</span></p></section>
     </section>
   </main>
 

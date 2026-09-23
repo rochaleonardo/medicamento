@@ -73,6 +73,8 @@ As cópias internas ficam no mesmo dispositivo e ajudam a desfazer alterações 
 
 ## Restaurar backup
 
+Se for o primeiro acesso, use o botão **Restaurar um backup** exibido abaixo de **Começar acompanhamento**. Também é possível restaurar posteriormente seguindo estes passos:
+
 1. Abra **Backup e exportação**.
 2. Toque em **Selecionar arquivo**.
 3. Selecione um backup JSON gerado pelo aplicativo.
@@ -89,7 +91,7 @@ Use **Exportar CSV**. O arquivo é gerado em UTF-8 com BOM e separador por ponto
 
 Quando uma nova versão dos arquivos for publicada, o aplicativo informa que há atualização disponível. Atualizar o PWA troca somente os arquivos do aplicativo e não apaga o IndexedDB.
 
-Versão atual: **1.2.0**.
+Versão atual: **1.2.1**.
 
 ## Desenvolvimento local
 
