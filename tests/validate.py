@@ -25,6 +25,8 @@ parser=Inspector(); parser.feed(html)
 assert len(parser.ids)==len(set(parser.ids)), "Há IDs HTML duplicados"
 assert 'id="setup-import-json"' in html, "Restauração ausente no primeiro acesso"
 assert '<span>do<br>acompanhamento</span>' in html, "Quebra de linha do contador não aplicada"
+assert 'id="terms-content-template"' in html, "Texto dos Termos de Uso ausente"
+assert 'id="view-terms"' in html, "Consulta posterior aos Termos de Uso ausente"
 for ref in parser.refs:
     assert (DIST/ref).exists(), f"Recurso local ausente: {ref}"
 
@@ -53,7 +55,7 @@ for ref in cached:
 assert "SKIP_WAITING" in sw and "caches.delete" in sw and "index.html" in sw
 
 app=(DIST/"app.js").read_text(encoding="utf-8")
-required=["indexedDB.open","exportCSV","exportJSON","shareJSON","createInternalSnapshot","snapshots","backupInterval","lastExternalBackupAt","importJSON","confirmDeleteAll","drawLineChart","baselineId","beforeinstallprompt","controllerchange"]
+required=["indexedDB.open","exportCSV","exportJSON","shareJSON","createInternalSnapshot","snapshots","backupInterval","lastExternalBackupAt","importJSON","confirmDeleteAll","drawLineChart","baselineId","beforeinstallprompt","controllerchange","TERMS_VERSION","termsAcceptedVersion","termsAcceptedAt","showTermsDialog","acceptCurrentTerms","sanitiseBackupSettings"]
 for token in required: assert token in app, f"Função essencial ausente: {token}"
 assert app.count('["attention"')==1
 assert len(re.findall(r'\["(?:insomnia|sleepiness|nausea|dryMouth|appetite|headache|dizziness|tingling|palpitations|anxiety|sweating|constipation)"',app))>=12

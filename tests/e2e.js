@@ -9,6 +9,11 @@ const path = require('path');
   const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('http://127.0.0.1:4173', {waitUntil:'networkidle'});
+  await page.waitForSelector('#modal-backdrop:not(.hidden)');
+  if(!(await page.locator('#modal-title').textContent()).includes('Termos de Uso')) throw new Error('Aceite obrigatório dos termos não foi exibido');
+  if(!(await page.locator('#modal-actions .button-primary').isDisabled())) throw new Error('Botão de aceite deveria iniciar desabilitado');
+  await page.check('#terms-consent-checkbox');
+  await page.click('#modal-actions .button-primary');
   if(!(await page.locator('#setup-import-json').isVisible())) throw new Error('Restauração não está disponível no primeiro acesso');
 
   await page.fill('#setup-name','Leonardo');
@@ -33,6 +38,7 @@ const path = require('path');
 
   await page.reload({waitUntil:'networkidle'});
   await page.waitForSelector('#dashboard-view:not(.hidden)');
+  if(await page.locator('#terms-consent-checkbox').count()) throw new Error('Termos foram solicitados novamente após aceite válido');
   await page.click('[data-go="history"]');
   if(await page.locator('.record-card').count() !== 1) throw new Error('Persistência após recarga falhou');
 
@@ -54,6 +60,7 @@ const path = require('path');
   if(!csvText.startsWith('\uFEFF') || !csvText.includes(';') || !csvText.includes('Medicamento de teste')) throw new Error('CSV inválido');
   const jsonPromise=page.waitForEvent('download'); await page.click('#export-json'); const jsonDownload=await jsonPromise; const jsonPath=await jsonDownload.path();
   const backup=JSON.parse(fs.readFileSync(jsonPath,'utf8')); if(backup.records.length!==1||!backup.baselineId)throw new Error('Backup JSON inválido');
+  if(backup.settings.termsAcceptedVersion||backup.settings.termsAcceptedAt)throw new Error('Aceite individual não deve ser exportado no backup');
   if(!(await page.locator('#backup-status').textContent()).includes('Último backup externo')) throw new Error('Indicador do último backup ausente');
 
   await page.click('[data-go="history"]');
