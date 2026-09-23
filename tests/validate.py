@@ -5,7 +5,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DIST = ROOT / "dist"
+DIST = ROOT / "dist" if (ROOT / "dist").exists() else ROOT
 
 class Inspector(HTMLParser):
     def __init__(self):
@@ -23,6 +23,8 @@ class Inspector(HTMLParser):
 html=(DIST/"index.html").read_text(encoding="utf-8")
 parser=Inspector(); parser.feed(html)
 assert len(parser.ids)==len(set(parser.ids)), "Há IDs HTML duplicados"
+assert 'id="setup-import-json"' in html, "Restauração ausente no primeiro acesso"
+assert '<span>do<br>acompanhamento</span>' in html, "Quebra de linha do contador não aplicada"
 for ref in parser.refs:
     assert (DIST/ref).exists(), f"Recurso local ausente: {ref}"
 

@@ -9,6 +9,7 @@ const path = require('path');
   const errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('http://127.0.0.1:4173', {waitUntil:'networkidle'});
+  if(!(await page.locator('#setup-import-json').isVisible())) throw new Error('Restauração não está disponível no primeiro acesso');
 
   await page.fill('#setup-name','Leonardo');
   await page.fill('#setup-start-date','2026-09-15');
